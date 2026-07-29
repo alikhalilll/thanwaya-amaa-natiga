@@ -71,6 +71,15 @@ function normalizeArabic(s) {
     .trim();
 }
 
+/**
+ * ASCII-safe slug for a letter, used as a directory name and URL segment.
+ * Percent-encoded names like `%D8%A7` collide with the HTTP layer's URL
+ * decoding on GitHub Pages, so we key by the Unicode codepoint instead.
+ */
+function letterSlug(letter) {
+  return 'u' + letter.charCodeAt(0).toString(16).padStart(4, '0');
+}
+
 function tierFor(degree, max) {
   const p = (degree / max) * 100;
   for (let i = 0; i < TIERS.length; i++) {
@@ -262,12 +271,12 @@ const letterKeys = [...byLetter.keys()].sort();
 for (const L of letterKeys) {
   const arr = byLetter.get(L).sort((a, b) => b.deg - a.deg || a.seat - b.seat);
   const chunks = Math.ceil(arr.length / LETTER_CHUNK_SIZE);
-  fs.mkdirSync(path.join(OUT_LETTER, encodeURIComponent(L)), { recursive: true });
+  fs.mkdirSync(path.join(OUT_LETTER, letterSlug(L)), { recursive: true });
   for (let i = 0; i < chunks; i++) {
     const slice = arr.slice(i * LETTER_CHUNK_SIZE, (i + 1) * LETTER_CHUNK_SIZE);
     const payload = JSON.stringify({ s: slice.map((r) => pack(r, false, 0)) });
     fs.writeFileSync(
-      path.join(OUT_LETTER, encodeURIComponent(L), `${i}.json`),
+      path.join(OUT_LETTER, letterSlug(L), `${i}.json`),
       payload,
     );
     letterBytes += payload.length;

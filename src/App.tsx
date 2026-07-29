@@ -76,11 +76,25 @@ export default function App() {
     }
 
     if (DIGITS_ONLY.test(trimmed)) {
+      // Seating-number path — debounce so we don't navigate on every keystroke
+      // (e.g. "2", "20", "200"...). Only jump into the detail page once the
+      // user has typed the full 7-digit seat and paused briefly.
       setMode('seating');
-      // Navigate directly into the detail page. Detail component itself will
-      // handle the "not found" case for out-of-range seats.
-      goToStudent(parseInt(trimmed, 10));
-      return;
+      setResults([], 0, false);
+      setProgress(null);
+      const isFullSeat = trimmed.length === 7;
+      if (!isFullSeat) {
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      debounceRef.current = window.setTimeout(() => {
+        setLoading(false);
+        goToStudent(parseInt(trimmed, 10));
+      }, 400);
+      return () => {
+        if (debounceRef.current) window.clearTimeout(debounceRef.current);
+      };
     }
 
     if (trimmed.length < 2) {
@@ -93,11 +107,7 @@ export default function App() {
     setMode('name');
     setResults([], 0, false);
     setLoading(true);
-    const meta = index?.letters[
-      // First char of the (raw) query is fine for progress metadata;
-      // the client will re-normalize inside searchByName.
-      trimmed.charAt(0)
-    ];
+    const meta = index?.letters[trimmed.charAt(0)];
     setProgress({ loaded: 0, total: meta?.chunks ?? 1 });
 
     const controller = new AbortController();
@@ -131,7 +141,7 @@ export default function App() {
             setProgress(null);
           }
         });
-    }, 300);
+    }, 350);
 
     return () => {
       controller.abort();

@@ -69,10 +69,12 @@ export default function SearchBar() {
       </div>
       <p className="mt-2 text-center text-xs text-white/50">
         {DIGITS_ONLY.test(query.trim())
-          ? 'بحث بالرقم القومي (رقم الجلوس)'
+          ? query.trim().length === 7
+            ? 'جاري فتح النتيجة...'
+            : `أكمل رقم الجلوس (٧ أرقام) — تم كتابة ${query.trim().length}`
           : query.trim().length > 0
-          ? 'بحث بالاسم — قد يستغرق ثوانٍ لأول مرة'
-          : 'رقم الجلوس يتراوح بين ٢٠٠١٩٧٠ و ٢٩٩٣٨٦٢'}
+          ? 'بحث بالاسم — يمكنك كتابة أكثر من كلمة'
+          : 'اكتب اسمًا أو رقم جلوس (بين ٢٠٠١٩٧٠ و ٢٩٩٣٨٦٢)'}
       </p>
     </motion.div>
   );

@@ -77,11 +77,15 @@ export async function getBySeating(
   return rows.find((r) => r.seat === seat) ?? null;
 }
 
+function letterSlug(letter: string): string {
+  return 'u' + letter.charCodeAt(0).toString(16).padStart(4, '0');
+}
+
 async function loadLetterChunk(letter: string, chunk: number): Promise<StudentRecord[]> {
   const key = `${letter}:${chunk}`;
   const cached = letterChunkCache.get(key);
   if (cached) return cached;
-  const url = `${BASE}data/by-letter/${encodeURIComponent(letter)}/${chunk}.json`;
+  const url = `${BASE}data/by-letter/${letterSlug(letter)}/${chunk}.json`;
   const res = await fetch(url);
   if (!res.ok) {
     letterChunkCache.set(key, []);
@@ -116,6 +120,17 @@ function matches(r: StudentRecord, f: Filters): boolean {
   return true;
 }
 
+/**
+ * A name matches if every whitespace-separated token in the query appears
+ * somewhere in the normalized name. This lets users search "احمد سيد" and get
+ * "احمد محمود السيد عبدالجواد السيد" — much more forgiving than a strict
+ * substring match on the whole query.
+ */
+function nameMatches(nameNorm: string, tokens: string[]): boolean {
+  for (const t of tokens) if (!nameNorm.includes(t)) return false;
+  return true;
+}
+
 function applySort(rows: StudentRecord[], sort: SortOrder): StudentRecord[] {
   const copy = [...rows];
   switch (sort) {
@@ -144,20 +159,23 @@ export async function searchByName(
 ): Promise<NameSearchResult> {
   const { limit = 200, signal, filters = {}, sort = 'degree_desc', onProgress } = options;
   const q = normalizeArabic(query);
-  if (q.length < 2) return { hits: [], truncated: false, totalMatches: 0 };
+  const tokens = q.split(' ').filter((t) => t.length >= 2);
+  if (tokens.length === 0) return { hits: [], truncated: false, totalMatches: 0 };
 
   const idx = await loadIndex();
-  const firstChar = q.charAt(0);
-  const meta = idx.letters[firstChar];
+  // We shard by the first letter of the *first* token, since letter buckets
+  // group students by the first character of their first name.
+  const primary = tokens[0].charAt(0);
+  const meta = idx.letters[primary];
   if (!meta) return { hits: [], truncated: false, totalMatches: 0 };
 
   const matched: StudentRecord[] = [];
   for (let c = 0; c < meta.chunks; c++) {
     if (signal?.aborted) break;
-    const rows = await loadLetterChunk(firstChar, c);
+    const rows = await loadLetterChunk(primary, c);
     for (const r of rows) {
       if (!matches(r, filters)) continue;
-      if (normalizeArabic(r.name).includes(q)) matched.push(r);
+      if (nameMatches(normalizeArabic(r.name), tokens)) matched.push(r);
     }
     onProgress?.(c + 1, meta.chunks);
   }
