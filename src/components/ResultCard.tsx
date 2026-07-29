@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import type { StudentRecord } from '../lib/types';
 import { pct, statusStyle, tierStyle, toArabicDigits } from '../lib/format';
 import CountUp from './CountUp';
+import CopyButton from './CopyButton';
 
 export default function ResultCard({
   record,
@@ -47,9 +48,7 @@ export default function ResultCard({
                 {tierName}
               </span>
             )}
-            <span className="text-[11px] sm:text-xs text-white/50">
-              رقم الجلوس: {toArabicDigits(record.seat)}
-            </span>
+            <CopyButton seat={record.seat} variant="chip" />
           </div>
           <h3
             className={`mt-2 font-bold text-white break-words ${

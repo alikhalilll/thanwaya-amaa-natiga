@@ -11,6 +11,7 @@ import {
 import CountUp from './CountUp';
 import { getBySeating, getSimilarInTier } from '../lib/dataClient';
 import ExternalPortals from './ExternalPortals';
+import CopyButton from './CopyButton';
 
 export default function StudentDetail({
   seat,
@@ -186,35 +187,38 @@ function StudentBody({
           </div>
         </div>
 
-        <div className="mt-4 sm:mt-6 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
-          <button
-            onClick={() => {
-              if (navigator.share) {
-                navigator.share({
-                  title: `نتيجة الطالب ${record.name}`,
-                  text: `${record.name} — ${toArabicDigits(record.degree)}/${toArabicDigits(degreeMax)} (${toArabicDigits(percent.toFixed(1))}٪)`,
-                  url: shareUrl,
-                });
-              } else {
-                navigator.clipboard?.writeText(shareUrl);
-              }
-            }}
-            className="rounded-lg bg-brand-500/20 border border-brand-400/40 px-2.5 py-2 text-[11px] sm:text-xs text-brand-100 hover:bg-brand-500/30 transition"
-          >
-            مشاركة
-          </button>
-          <button
-            onClick={() => navigator.clipboard?.writeText(shareUrl)}
-            className="rounded-lg bg-white/5 px-2.5 py-2 text-[11px] sm:text-xs text-white/80 hover:bg-white/10 transition"
-          >
-            نسخ الرابط
-          </button>
-          <button
-            onClick={() => window.print()}
-            className="rounded-lg bg-white/5 px-2.5 py-2 text-[11px] sm:text-xs text-white/80 hover:bg-white/10 transition"
-          >
-            طباعة
-          </button>
+        <div className="mt-4 sm:mt-6 space-y-2">
+          <CopyButton seat={record.seat} variant="block" />
+          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
+            <button
+              onClick={() => {
+                if (navigator.share) {
+                  navigator.share({
+                    title: `نتيجة الطالب ${record.name}`,
+                    text: `${record.name} — ${toArabicDigits(record.degree)}/${toArabicDigits(degreeMax)} (${toArabicDigits(percent.toFixed(1))}٪)`,
+                    url: shareUrl,
+                  });
+                } else {
+                  navigator.clipboard?.writeText(shareUrl);
+                }
+              }}
+              className="rounded-lg bg-white/5 px-2.5 py-2 text-[11px] sm:text-xs text-white/80 hover:bg-white/10 transition"
+            >
+              مشاركة
+            </button>
+            <button
+              onClick={() => navigator.clipboard?.writeText(shareUrl)}
+              className="rounded-lg bg-white/5 px-2.5 py-2 text-[11px] sm:text-xs text-white/80 hover:bg-white/10 transition"
+            >
+              نسخ الرابط
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="rounded-lg bg-white/5 px-2.5 py-2 text-[11px] sm:text-xs text-white/80 hover:bg-white/10 transition"
+            >
+              طباعة
+            </button>
+          </div>
         </div>
       </div>
 
