@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  min-height: 100%;
+  background:
+    radial-gradient(1200px 800px at 80% -10%, rgba(89,174,255,0.20), transparent 60%),
+    radial-gradient(1000px 700px at -10% 10%, rgba(22,87,195,0.25), transparent 60%),
+    radial-gradient(900px 700px at 50% 110%, rgba(47,141,255,0.20), transparent 60%),
+    #060b1a;
+  color: #e6ecff;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
+
+/* Prevent iOS from zooming in on focus for inputs */
+@supports (-webkit-touch-callout: none) {
+  input, textarea, select {
+    font-size: 16px;
+  }
+}
+
+.glass {
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.shine-text {
+  background: linear-gradient(90deg, #8fccff, #ffffff 40%, #8fccff 80%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* subtle scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.12);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
