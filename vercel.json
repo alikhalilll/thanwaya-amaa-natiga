@@ -1,20 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": null,
-  "outputDirectory": null,
-  "installCommand": "npm install --prefix .vercel-deps @vercel/node@^3",
   "framework": null,
+  "buildCommand": "mkdir -p public && touch public/.keep",
+  "outputDirectory": "public",
   "functions": {
     "api/subjects.ts": {
-      "runtime": "@vercel/node@3",
-      "maxDuration": 15
+      "maxDuration": 45,
+      "memory": 1024,
+      "includeFiles": "node_modules/@sparticuz/chromium/**"
     }
   },
-  "cleanUrls": true,
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "s-maxage=3600" }]
-    }
-  ]
+  "cleanUrls": true
 }

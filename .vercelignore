@@ -5,9 +5,11 @@ src
 scripts
 worker
 tsconfig.json
+tsconfig.node.json
 tsconfig.tsbuildinfo
 tailwind.config.ts
 postcss.config.js
 vite.config.ts
 index.html
 .github
+README.md

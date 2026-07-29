@@ -1,29 +1,30 @@
 /**
- * Vercel Serverless Function — proxy for natega.youm7.com per-student results.
+ * Vercel Serverless Function — headless-Chromium proxy for natega.youm7.com.
  *
- * Why Vercel and not Cloudflare Workers: natega.youm7.com sits behind
- * Cloudflare and blocks Worker-to-Worker (Cloudflare-to-Cloudflare) traffic
- * silently — the upstream returns the empty Home form. Vercel functions run
- * on AWS IPs that pass through, so we get the real result page.
+ * Plain fetch() gets fingerprinted by Youm7's WAF and returns the empty
+ * Home form. A real browser (chromium via puppeteer-core) sends legit TLS
+ * and can pass any JS challenge. Same Vercel egress IP as fetch, so this
+ * is best-effort — if Youm7 still rejects on IP, we surface a clear error.
  *
  * Endpoint:  GET /api/subjects?seat=2001970[&system=1|2][&debug=1]
- * Response:  { seat, name?, section?, status?, education?, total?, totalMax?,
- *              percentTotal?, subjects: [{name, score, max, percent, offered}],
- *              source, fetchedAt }
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import chromium from '@sparticuz/chromium';
+import puppeteer from 'puppeteer-core';
 
 const UPSTREAM = 'https://natega.youm7.com';
-
-const UA =
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
-  '(KHTML, like Gecko) Chrome/120 Safari/537.36';
+const NAV_TIMEOUT = 20_000;
 
 const ALLOWED_ORIGINS = new Set([
   'https://alikhalilll.github.io',
   'http://localhost:5173',
   'http://localhost:4173',
 ]);
+
+export const config = {
+  memory: 1024,
+  maxDuration: 45,
+};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const origin = (req.headers.origin as string) || '';
@@ -40,41 +41,59 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const system = String(req.query.system ?? '1').trim();
   const debug = req.query.debug === '1';
 
-  if (!/^\d{7}$/.test(seat)) {
-    return res.status(400).json({ error: 'seat must be 7 digits' });
-  }
-  if (!/^[12]$/.test(system)) {
-    return res.status(400).json({ error: 'system must be 1 or 2' });
-  }
+  if (!/^\d{7}$/.test(seat)) return res.status(400).json({ error: 'seat must be 7 digits' });
+  if (!/^[12]$/.test(system)) return res.status(400).json({ error: 'system must be 1 or 2' });
 
+  let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
   try {
-    // Step 1: warm up a session with GET /Home so we look like a browser.
-    await fetch(`${UPSTREAM}/Home`, {
-      headers: { 'User-Agent': UA, Accept: 'text/html' },
+    browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: { width: 1280, height: 720 },
+      executablePath: await chromium.executablePath(),
+      headless: true,
     });
 
-    // Step 2: POST /Result/1 with the real field names.
-    const body = new URLSearchParams({ seating_no: seat, system }).toString();
-    const upstream = await fetch(`${UPSTREAM}/Result/1`, {
-      method: 'POST',
-      headers: {
-        'User-Agent': UA,
-        Accept: 'text/html,application/xhtml+xml',
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Referer: `${UPSTREAM}/Home`,
-        Origin: UPSTREAM,
-      },
-      body,
+    const page = await browser.newPage();
+    await page.setUserAgent(
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
+        '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    );
+    await page.setExtraHTTPHeaders({ 'Accept-Language': 'ar,en-US;q=0.9,en;q=0.8' });
+
+    await page.goto(`${UPSTREAM}/Home`, {
+      waitUntil: 'domcontentloaded',
+      timeout: NAV_TIMEOUT,
     });
-    const html = await upstream.text();
+
+    // Fill the seating number input (id="seat-number", name="seating_no").
+    await page.waitForSelector('#seat-number', { timeout: NAV_TIMEOUT });
+    await page.type('#seat-number', seat, { delay: 20 });
+    // Pick the right system radio.
+    await page.$eval(
+      `input[name="system"][value="${system}"]`,
+      (el: HTMLInputElement) => (el.checked = true),
+    );
+
+    // Submit the form and wait for the result page.
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT }),
+      page.click('.inquiry-form__submit'),
+    ]);
+
+    const html = await page.content();
 
     if (debug) {
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('X-Upstream-Status', String(upstream.status));
       return res.status(200).send(html);
     }
 
     const parsed = parseYoum7(html, seat);
+    if (parsed.subjects.length === 0 && parsed.total == null) {
+      return res.status(502).json({
+        error: 'upstream returned no result data — Youm7 may have rejected this request',
+        seat,
+      });
+    }
     res.setHeader('Cache-Control', 's-maxage=3600, max-age=60');
     return res.status(200).json(parsed);
   } catch (err) {
@@ -82,10 +101,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       error: 'upstream fetch failed',
       detail: err instanceof Error ? err.message : String(err),
     });
+  } finally {
+    if (browser) await browser.close().catch(() => {});
   }
 }
 
-// ─── HTML → structured extractor ───────────────────────────────────────────
+// ─── HTML parser (unchanged from fetch version) ─────────────────────────────
 
 type Subject = {
   name: string;
@@ -131,8 +152,6 @@ function toPlain(html: string): string {
 }
 
 function extractLabel(plain: string, labels: string[]): string | undefined {
-  // Value follows "<label>:" or "<label>" then a run of tokens ending before
-  // the next known section marker.
   const stopMarkers = [
     'حالة الطالب',
     'نوعية التعليم',
@@ -160,12 +179,8 @@ function extractLabel(plain: string, labels: string[]): string | undefined {
   return undefined;
 }
 
-/** Youm7 renders subjects as "<subject-name> <score> / <max> <percent>%" lines
- *  (or "غير مقرر / <max> —" when not registered for that subject). */
 function extractSubjects(plain: string): Subject[] {
   const out: Subject[] = [];
-  // Anchor scan to the block between "المادة الدرجة النسبة المئوية" (header row)
-  // and "النسبة المئوية الكلية" (grand-total row).
   const headerIdx = plain.indexOf('المادة الدرجة النسبة المئوية');
   const totalIdx = plain.indexOf('النسبة المئوية الكلية');
   if (headerIdx < 0) return out;
@@ -174,7 +189,6 @@ function extractSubjects(plain: string): Subject[] {
     totalIdx > headerIdx ? totalIdx : plain.length,
   );
 
-  // Match either "<subj> <score> / <max> <pct>%" or "<subj> غير مقرر / <max> —"
   const re =
     /([؀-ۿ][؀-ۿ\s]{2,60}?)\s+(?:(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)%|غير\s*مقرر\s*\/\s*(\d+(?:\.\d+)?)\s+[—\-])/g;
   let m: RegExpExecArray | null;
@@ -203,20 +217,16 @@ function extractSubjects(plain: string): Subject[] {
 
 function parseYoum7(html: string, seat: string): Parsed {
   const plain = toPlain(html);
-
   const status = extractLabel(plain, ['حالة الطالب']);
   const education = extractLabel(plain, ['نوعية التعليم']);
   const section = extractLabel(plain, ['الشعبة']);
   const name = extractLabel(plain, ['اسم الطالب', 'الاسم']);
-
   const subjects = extractSubjects(plain);
 
-  // "مجموع الدرجات 290.00 / 320"
   const totalMatch = plain.match(/مجموع الدرجات\s+(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
   const total = totalMatch ? parseFloat(totalMatch[1]) : undefined;
   const totalMax = totalMatch ? parseFloat(totalMatch[2]) : undefined;
 
-  // "النسبة المئوية الكلية 90.63 %"
   const pctMatch = plain.match(/النسبة المئوية الكلية\s+(\d+(?:\.\d+)?)\s*%/);
   const percentTotal = pctMatch ? parseFloat(pctMatch[1]) : undefined;
 
