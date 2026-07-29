@@ -157,14 +157,19 @@ orderedStatuses.forEach((s, i) => console.log(`  ${i}: ${s}`));
 // -----------------------------------------------------------------------------
 
 const tierCounts = TIERS.map(() => 0);
-const degreeHistogram = new Array(degreeMax + 1).fill(0);
+// Half-mark degrees exist (~45% of students score X.5 rather than integer X),
+// so histogram is 2x resolution: index 2*deg, meaning bin 0.5 goes to slot 1.
+const degreeHistogram = new Array(degreeMax * 2 + 1).fill(0);
+let fractionalDegrees = 0;
 
 for (const rec of records) {
   rec.status = statusIdx.get(rec._status);
   statusCounts[rec.status]++;
   rec.tier = tierFor(rec.deg, degreeMax);
   tierCounts[rec.tier]++;
-  degreeHistogram[rec.deg]++;
+  const halfIdx = Math.round(rec.deg * 2);
+  if (halfIdx >= 0 && halfIdx < degreeHistogram.length) degreeHistogram[halfIdx]++;
+  if (rec.deg !== Math.floor(rec.deg)) fractionalDegrees++;
 
   const normFull = normalizeArabic(rec.name);
   rec.nameNorm = normFull;
@@ -177,6 +182,7 @@ for (const rec of records) {
 
 console.log('Tier counts:');
 TIERS.forEach((t, i) => console.log(`  ${t.name}: ${tierCounts[i]}`));
+console.log(`Fractional (half-mark) degrees: ${fractionalDegrees}`);
 
 // -----------------------------------------------------------------------------
 // Pass 3: assign ranks
@@ -300,7 +306,9 @@ const index = {
     minDegree: Math.ceil((t.minPct / 100) * degreeMax),
     count: tierCounts[i],
   })),
-  degreeHistogram, // length = degreeMax + 1
+  degreeHistogram, // length = degreeMax*2 + 1; index i corresponds to degree i/2
+  degreeHistogramStep: 0.5,
+  fractionalDegrees,
   letters: letterMeta, // { letter: { count, chunks } }
   letterChunkSize: LETTER_CHUNK_SIZE,
   packed: {

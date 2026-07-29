@@ -28,6 +28,8 @@ export type DataIndex = {
   statusCounts: number[];
   tiers: TierMeta[];
   degreeHistogram: number[];
+  degreeHistogramStep?: number;
+  fractionalDegrees?: number;
   letters: Record<string, LetterMeta>;
   letterChunkSize: number;
   builtAt: string;

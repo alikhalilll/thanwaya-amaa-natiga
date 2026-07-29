@@ -105,6 +105,7 @@ export default function Filters({ index }: { index: DataIndex | null }) {
             value={minDegree}
             min={0}
             max={degreeMax}
+            step={0.5}
             onChange={(v) => setDegreeRange(Math.min(v, maxDegree), maxDegree)}
           />
           <RangeControl
@@ -112,6 +113,7 @@ export default function Filters({ index }: { index: DataIndex | null }) {
             value={maxDegree}
             min={0}
             max={degreeMax}
+            step={0.5}
             onChange={(v) => setDegreeRange(minDegree, Math.max(v, minDegree))}
           />
         </div>
@@ -146,12 +148,14 @@ function RangeControl({
   value,
   min,
   max,
+  step = 1,
   onChange,
 }: {
   label: string;
   value: number;
   min: number;
   max: number;
+  step?: number;
   onChange: (v: number) => void;
 }) {
   return (
@@ -164,6 +168,7 @@ function RangeControl({
         type="range"
         min={min}
         max={max}
+        step={step}
         value={value}
         onChange={(e) => onChange(+e.target.value)}
         className="w-full accent-brand-400"
