@@ -1,16 +1,20 @@
 export type Subject = {
   name: string;
-  score: number;
-  max?: number;
+  score: number | null;
+  max: number | null;
+  percent: number | null;
+  offered: boolean;
 };
 
 export type StudentSubjects = {
   seat: string;
   name?: string;
-  school?: string;
-  district?: string;
   section?: string;
-  total?: string;
+  status?: string;
+  education?: string;
+  total?: number;
+  totalMax?: number;
+  percentTotal?: number;
   subjects: Subject[];
   source: string;
   fetchedAt: string;
@@ -30,16 +34,17 @@ export function fetchStudentSubjects(seat: number): Promise<StudentSubjects> {
   if (cached) return cached;
 
   const p = (async () => {
-    const url = new URL(PROXY);
-    url.searchParams.set('seat', String(seat));
-    const res = await fetch(url.toString());
-    if (!res.ok) {
-      throw new Error(`proxy ${res.status}`);
-    }
+    // PROXY may be the plain root of a Vercel deploy (…vercel.app) or the
+    // root of a legacy Cloudflare Worker (…workers.dev). We probe both.
+    const base = PROXY!.replace(/\/+$/, '');
+    const url = base.includes('/api/')
+      ? `${base}?seat=${seat}`
+      : `${base}/api/subjects?seat=${seat}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`proxy ${res.status}`);
     return (await res.json()) as StudentSubjects;
   })();
 
-  // Only cache successful responses so failures can be retried.
   p.catch(() => cache.delete(seat));
   cache.set(seat, p);
   return p;

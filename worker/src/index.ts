@@ -73,11 +73,23 @@ export default {
       if (!rl.success) return json({ error: 'rate limited' }, 429, cors);
     }
 
+    const debug = url.searchParams.get('debug') === '1';
     try {
-      const result = await fetchSubjects(env.UPSTREAM_BASE, seat, system);
+      const { html, upstreamStatus } = await fetchUpstreamHtml(env.UPSTREAM_BASE, seat, system);
+      if (debug) {
+        return new Response(html, {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'X-Upstream-Status': String(upstreamStatus),
+            ...cors,
+          },
+        });
+      }
+      const result = parseYoum7(html, seat);
       // Cache successful lookups for an hour at the edge; the underlying result
       // never changes for a given seat once published.
-      return json(result, 200, {
+      return json({ ...result, upstreamStatus }, 200, {
         ...cors,
         'Cache-Control': 'public, max-age=3600, s-maxage=3600',
       });
@@ -117,7 +129,11 @@ function json(data: unknown, status: number, extra: Record<string, string> = {})
   });
 }
 
-async function fetchSubjects(base: string, seat: string, system: string): Promise<StudentSubjects> {
+async function fetchUpstreamHtml(
+  base: string,
+  seat: string,
+  system: string,
+): Promise<{ html: string; upstreamStatus: number }> {
   // Step 1: GET /Home to establish a session cookie.
   const home = await fetch(`${base}/Home`, {
     headers: {
@@ -134,8 +150,9 @@ async function fetchSubjects(base: string, seat: string, system: string): Promis
     .filter(Boolean)
     .join('; ');
 
-  // Step 2: POST the seat and system to /Result/1
-  const body = new URLSearchParams({ seatNo: seat, system }).toString();
+  // Step 2: POST the seat and system to /Result/1.
+  // The visible input is <input id="seat-number" name="seating_no">, not seatNo.
+  const body = new URLSearchParams({ seating_no: seat, system }).toString();
   const res = await fetch(`${base}/Result/1`, {
     method: 'POST',
     headers: {
@@ -152,7 +169,7 @@ async function fetchSubjects(base: string, seat: string, system: string): Promis
   });
   if (!res.ok) throw new Error(`upstream ${res.status}`);
   const html = await res.text();
-  return parseYoum7(html, seat);
+  return { html, upstreamStatus: res.status };
 }
 
 /**
