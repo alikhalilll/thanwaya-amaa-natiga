@@ -1,0 +1,17 @@
+name = "thanwaya-subjects-proxy"
+main = "src/index.ts"
+compatibility_date = "2026-07-01"
+
+# CORS allowed origins. If you serve the site from a different origin (e.g.
+# after adding a custom domain) add it here, comma-separated.
+[vars]
+ALLOWED_ORIGINS = "https://alikhalilll.github.io,http://localhost:5173"
+UPSTREAM_BASE = "https://natega.youm7.com"
+
+# The rate limit is intentionally strict — this proxy is meant for interactive
+# per-student lookups from the site UI, not batch scraping.
+[[unsafe.bindings]]
+name = "RATE_LIMITER"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 20, period = 60 }

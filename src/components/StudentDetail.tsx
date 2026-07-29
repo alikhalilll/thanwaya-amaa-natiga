@@ -12,6 +12,7 @@ import CountUp from './CountUp';
 import { getBySeating, getSimilarInTier } from '../lib/dataClient';
 import ExternalPortals from './ExternalPortals';
 import CopyButton from './CopyButton';
+import SubjectsPanel from './SubjectsPanel';
 
 export default function StudentDetail({
   seat,
@@ -221,6 +222,8 @@ function StudentBody({
           </div>
         </div>
       </div>
+
+      <SubjectsPanel seat={record.seat} />
 
       <ExternalPortals seat={record.seat} />
 

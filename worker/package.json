@@ -1,0 +1,16 @@
+{
+  "name": "thanwaya-subjects-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloudflare Worker that fetches per-student subject scores from natega.youm7.com and returns JSON with CORS headers so the static site can display subjects/school/district on the student detail page.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "typescript": "^5.6.3",
+    "wrangler": "^3.90.0"
+  }
+}
