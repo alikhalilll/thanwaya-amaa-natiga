@@ -7,15 +7,16 @@ export default function Stats({ index }: { index: DataIndex | null }) {
   const total = index.totalRows;
   const passed = index.statusCounts[0] ?? 0;
   const rate = total ? ((passed / total) * 100).toFixed(1) : '0';
+  const excellent = index.tiers[0]?.count ?? 0;
 
   return (
     <motion.section
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.35, duration: 0.5 }}
+      transition={{ delay: 0.3, duration: 0.5 }}
       className="mx-auto max-w-3xl px-4 py-4"
     >
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard
           label="إجمالي الطلاب"
           value={toArabicDigits(total.toLocaleString('en-US'))}
@@ -25,17 +26,16 @@ export default function Stats({ index }: { index: DataIndex | null }) {
           value={`${toArabicDigits(rate)}٪`}
           accent="from-emerald-400 to-emerald-600"
         />
-        {index.statusCounts.slice(1, 3).map((c, i) => {
-          const status = statusStyle(i + 1);
-          return (
-            <StatCard
-              key={i}
-              label={status.label}
-              value={toArabicDigits(c.toLocaleString('en-US'))}
-              accent="from-brand-400 to-brand-700"
-            />
-          );
-        })}
+        <StatCard
+          label={`تقدير ${index.tiers[0]?.name ?? 'ممتاز'} (٩٠٪+)`}
+          value={toArabicDigits(excellent.toLocaleString('en-US'))}
+          accent="from-brand-400 to-brand-700"
+        />
+        <StatCard
+          label={statusStyle(1).label}
+          value={toArabicDigits((index.statusCounts[1] ?? 0).toLocaleString('en-US'))}
+          accent="from-amber-400 to-orange-600"
+        />
       </div>
     </motion.section>
   );

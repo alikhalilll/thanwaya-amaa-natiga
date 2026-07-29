@@ -3,7 +3,20 @@ export type StudentRecord = {
   name: string;
   degree: number;
   status: number;
+  tier: number;
+  rank: number;
+  rankInStatus: number;
 };
+
+export type TierMeta = {
+  key: number;
+  name: string;
+  minPct: number;
+  minDegree: number;
+  count: number;
+};
+
+export type LetterMeta = { count: number; chunks: number };
 
 export type DataIndex = {
   totalRows: number;
@@ -13,7 +26,9 @@ export type DataIndex = {
   bucketDigits: number;
   statuses: string[];
   statusCounts: number[];
-  buckets: number[];
-  nameShardCount: number;
+  tiers: TierMeta[];
+  degreeHistogram: number[];
+  letters: Record<string, LetterMeta>;
+  letterChunkSize: number;
   builtAt: string;
 };

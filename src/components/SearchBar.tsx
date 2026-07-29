@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { useResultsStore } from '../store/useResultsStore';
 import { fromArabicDigits } from '../lib/format';
 
@@ -10,12 +10,6 @@ export default function SearchBar() {
   const setQuery = useResultsStore((s) => s.setQuery);
   const loading = useResultsStore((s) => s.loading);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const seat = params.get('seat');
-    if (seat) setQuery(seat);
-  }, [setQuery]);
 
   return (
     <motion.div

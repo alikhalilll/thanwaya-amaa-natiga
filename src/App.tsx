@@ -1,42 +1,46 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Hero from './components/Hero';
 import SearchBar from './components/SearchBar';
 import Filters from './components/Filters';
-import ResultCard from './components/ResultCard';
 import ResultsList from './components/ResultsList';
 import Stats from './components/Stats';
 import EmptyState from './components/EmptyState';
 import LoadingBar from './components/LoadingBar';
+import StudentDetail from './components/StudentDetail';
+import TopScorers from './components/TopScorers';
 import { useResultsStore } from './store/useResultsStore';
 import type { DataIndex, StudentRecord } from './lib/types';
-import { getBySeating, loadIndex, searchByName } from './lib/dataClient';
+import { loadIndex, searchByName } from './lib/dataClient';
 import { toArabicDigits } from './lib/format';
+import { goHome, goToStudent, useHashRoute } from './lib/useHashRoute';
 
 const DIGITS_ONLY = /^[0-9]+$/;
 
 export default function App() {
   const [index, setIndex] = useState<DataIndex | null>(null);
   const [indexError, setIndexError] = useState<string | null>(null);
+  const route = useHashRoute();
 
   const query = useResultsStore((s) => s.query);
+  const setQuery = useResultsStore((s) => s.setQuery);
   const setLoading = useResultsStore((s) => s.setLoading);
   const setProgress = useResultsStore((s) => s.setProgress);
   const setResults = useResultsStore((s) => s.setResults);
-  const setSingleResult = useResultsStore((s) => s.setSingleResult);
   const setMode = useResultsStore((s) => s.setMode);
-  const setTruncated = useResultsStore((s) => s.setTruncated);
   const setError = useResultsStore((s) => s.setError);
 
   const mode = useResultsStore((s) => s.mode);
   const loading = useResultsStore((s) => s.loading);
   const progress = useResultsStore((s) => s.progress);
   const results = useResultsStore((s) => s.results);
-  const singleResult = useResultsStore((s) => s.singleResult);
+  const totalMatches = useResultsStore((s) => s.totalMatches);
   const truncated = useResultsStore((s) => s.truncated);
   const error = useResultsStore((s) => s.error);
   const activeStatuses = useResultsStore((s) => s.activeStatuses);
+  const activeTiers = useResultsStore((s) => s.activeTiers);
   const minDegree = useResultsStore((s) => s.minDegree);
   const maxDegree = useResultsStore((s) => s.maxDegree);
+  const sort = useResultsStore((s) => s.sort);
 
   useEffect(() => {
     loadIndex()
@@ -44,10 +48,20 @@ export default function App() {
       .catch((e: Error) => setIndexError(e.message));
   }, []);
 
+  // Support the old `?seat=` URL form as a redirect into hash routing.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const seatParam = params.get('seat');
+    if (seatParam && /^\d+$/.test(seatParam) && route.name === 'home') {
+      goToStudent(parseInt(seatParam, 10));
+    }
+  }, [route.name]);
+
   const abortRef = useRef<AbortController | null>(null);
   const debounceRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if (route.name !== 'home') return;
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     if (abortRef.current) abortRef.current.abort();
     setError(null);
@@ -55,8 +69,7 @@ export default function App() {
     const trimmed = query.trim();
     if (!trimmed) {
       setMode('idle');
-      setResults([]);
-      setSingleResult(null);
+      setResults([], 0, false);
       setProgress(null);
       setLoading(false);
       return;
@@ -64,36 +77,28 @@ export default function App() {
 
     if (DIGITS_ONLY.test(trimmed)) {
       setMode('seating');
-      setResults([]);
-      setLoading(true);
-      const seat = parseInt(trimmed, 10);
-      getBySeating(seat)
-        .then((rec) => {
-          setSingleResult(rec);
-          if (!rec) setError(`لم يتم العثور على نتيجة برقم الجلوس ${toArabicDigits(seat)}`);
-          const url = new URL(window.location.href);
-          if (rec) url.searchParams.set('seat', String(seat));
-          else url.searchParams.delete('seat');
-          window.history.replaceState({}, '', url.toString());
-        })
-        .catch((e: Error) => setError(e.message))
-        .finally(() => setLoading(false));
+      // Navigate directly into the detail page. Detail component itself will
+      // handle the "not found" case for out-of-range seats.
+      goToStudent(parseInt(trimmed, 10));
       return;
     }
 
     if (trimmed.length < 2) {
       setMode('idle');
-      setResults([]);
-      setSingleResult(null);
+      setResults([], 0, false);
       setLoading(false);
       return;
     }
 
     setMode('name');
-    setSingleResult(null);
-    setResults([]);
+    setResults([], 0, false);
     setLoading(true);
-    setProgress({ loaded: 0, total: index?.nameShardCount ?? 1 });
+    const meta = index?.letters[
+      // First char of the (raw) query is fine for progress metadata;
+      // the client will re-normalize inside searchByName.
+      trimmed.charAt(0)
+    ];
+    setProgress({ loaded: 0, total: meta?.chunks ?? 1 });
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -101,18 +106,21 @@ export default function App() {
     debounceRef.current = window.setTimeout(() => {
       searchByName(trimmed, {
         signal: controller.signal,
-        onProgress: (p) => setProgress(p),
+        onProgress: (loaded, total) => setProgress({ loaded, total }),
         limit: 200,
-        statusFilter: activeStatuses.size ? activeStatuses : undefined,
-        minDegree,
-        maxDegree,
+        sort,
+        filters: {
+          statuses: activeStatuses,
+          tiers: activeTiers,
+          minDegree,
+          maxDegree,
+        },
       })
         .then((r) => {
           if (controller.signal.aborted) return;
-          setResults(r.hits);
-          setTruncated(r.truncated);
+          setResults(r.hits, r.totalMatches, r.truncated);
           if (r.hits.length === 0)
-            setError(`لم يتم العثور على أي طالب باسم "${trimmed}"`);
+            setError(`لم يتم العثور على أي طالب يطابق "${trimmed}"`);
         })
         .catch((e: Error) => {
           if (e.name !== 'AbortError') setError(e.message);
@@ -123,7 +131,7 @@ export default function App() {
             setProgress(null);
           }
         });
-    }, 350);
+    }, 300);
 
     return () => {
       controller.abort();
@@ -132,73 +140,77 @@ export default function App() {
   }, [
     query,
     activeStatuses,
+    activeTiers,
     minDegree,
     maxDegree,
+    sort,
+    route.name,
+    index,
     setError,
     setLoading,
     setMode,
     setProgress,
     setResults,
-    setSingleResult,
-    setTruncated,
-    index?.nameShardCount,
   ]);
 
-  const filteredResults = useMemo<StudentRecord[]>(() => {
-    return results.filter((r) => {
-      if (activeStatuses.size && !activeStatuses.has(r.status)) return false;
-      if (r.degree < minDegree || r.degree > maxDegree) return false;
-      return true;
-    });
-  }, [results, activeStatuses, minDegree, maxDegree]);
-
-  const degreeMax = index?.degreeMax ?? 320;
+  const handleOpen = (r: StudentRecord) => goToStudent(r.seat);
+  const handleBack = () => {
+    goHome();
+    setQuery('');
+  };
 
   return (
     <div className="min-h-screen">
-      <Hero index={index} />
-      <SearchBar />
-      <Filters index={index} />
+      {route.name === 'student' ? (
+        <StudentDetail seat={route.seat} index={index} onBack={handleBack} />
+      ) : (
+        <>
+          <Hero index={index} />
+          <SearchBar />
+          <Filters index={index} />
 
-      {indexError && (
-        <EmptyState
-          title="تعذّر تحميل بيانات النتائج"
-          hint={indexError}
-        />
+          {indexError && (
+            <EmptyState title="تعذّر تحميل بيانات النتائج" hint={indexError} />
+          )}
+
+          {mode === 'idle' && !indexError && (
+            <>
+              <Stats index={index} />
+              <TopScorers index={index} onOpen={handleOpen} />
+            </>
+          )}
+
+          {loading && mode === 'name' && progress && (
+            <div className="py-2">
+              <LoadingBar loaded={progress.loaded} total={progress.total} />
+            </div>
+          )}
+
+          {mode === 'seating' && loading && (
+            <div className="mx-auto max-w-3xl px-4 py-6 text-center text-white/60">
+              جاري فتح بيانات رقم الجلوس {toArabicDigits(query)}...
+            </div>
+          )}
+
+          {mode === 'name' && results.length > 0 && (
+            <ResultsList
+              results={results}
+              totalMatches={totalMatches}
+              truncated={truncated}
+              index={index}
+              onOpen={handleOpen}
+            />
+          )}
+
+          {error && !loading && (
+            <EmptyState title="لا توجد نتائج" hint={error} />
+          )}
+
+          <footer className="mx-auto max-w-3xl px-4 pb-10 pt-6 text-center text-xs text-white/40">
+            البيانات معروضة من الملف الأصلي لأغراض البحث فقط. المصدر: نتيجة الثانوية العامة ٢٠٢٦ الدور الأول.
+          </footer>
+        </>
       )}
-
-      {mode === 'idle' && !indexError && <Stats index={index} />}
-
-      {loading && mode === 'name' && progress && (
-        <div className="py-4">
-          <LoadingBar loaded={progress.loaded} total={progress.total} />
-        </div>
-      )}
-
-      {mode === 'seating' && singleResult && (
-        <section className="mx-auto max-w-3xl px-4 py-6">
-          <ResultCard record={singleResult} featured degreeMax={degreeMax} />
-        </section>
-      )}
-
-      {mode === 'name' && filteredResults.length > 0 && (
-        <ResultsList
-          results={filteredResults}
-          truncated={truncated}
-          degreeMax={degreeMax}
-        />
-      )}
-
-      {error && !loading && (
-        <EmptyState
-          title="لا توجد نتائج"
-          hint={error}
-        />
-      )}
-
-      <footer className="mx-auto max-w-3xl px-4 pb-10 pt-6 text-center text-xs text-white/40">
-        البيانات معروضة من الملف الأصلي لأغراض البحث فقط. المصدر: نتيجة الثانوية العامة ٢٠٢٦ الدور الأول.
-      </footer>
     </div>
   );
 }

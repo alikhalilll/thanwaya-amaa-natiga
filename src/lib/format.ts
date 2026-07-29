@@ -24,6 +24,45 @@ export function degreeColor(degree: number, max = 320): string {
   return 'from-rose-400 to-red-600';
 }
 
+export function tierStyle(tierIndex: number): {
+  chip: string;
+  ring: string;
+  gradient: string;
+} {
+  switch (tierIndex) {
+    case 0:
+      return {
+        chip: 'bg-emerald-500/15 text-emerald-200 border-emerald-400/40',
+        ring: 'ring-emerald-400/40',
+        gradient: 'from-emerald-400 to-teal-600',
+      };
+    case 1:
+      return {
+        chip: 'bg-sky-500/15 text-sky-200 border-sky-400/40',
+        ring: 'ring-sky-400/40',
+        gradient: 'from-sky-400 to-blue-600',
+      };
+    case 2:
+      return {
+        chip: 'bg-indigo-500/15 text-indigo-200 border-indigo-400/40',
+        ring: 'ring-indigo-400/40',
+        gradient: 'from-indigo-400 to-violet-600',
+      };
+    case 3:
+      return {
+        chip: 'bg-amber-500/15 text-amber-200 border-amber-400/40',
+        ring: 'ring-amber-400/40',
+        gradient: 'from-amber-400 to-orange-600',
+      };
+    default:
+      return {
+        chip: 'bg-rose-500/15 text-rose-200 border-rose-400/40',
+        ring: 'ring-rose-400/40',
+        gradient: 'from-rose-400 to-red-600',
+      };
+  }
+}
+
 export function statusStyle(statusIndex: number): {
   label: string;
   chip: string;
