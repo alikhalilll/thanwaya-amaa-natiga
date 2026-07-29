@@ -108,7 +108,6 @@ export type SortOrder = 'degree_desc' | 'degree_asc' | 'seat_asc';
 
 export type NameSearchResult = {
   hits: StudentRecord[];
-  truncated: boolean;
   totalMatches: number;
 };
 
@@ -150,24 +149,23 @@ function applySort(rows: StudentRecord[], sort: SortOrder): StudentRecord[] {
 export async function searchByName(
   query: string,
   options: {
-    limit?: number;
     signal?: AbortSignal;
     filters?: Filters;
     sort?: SortOrder;
     onProgress?: (loaded: number, total: number) => void;
   } = {},
 ): Promise<NameSearchResult> {
-  const { limit = 200, signal, filters = {}, sort = 'degree_desc', onProgress } = options;
+  const { signal, filters = {}, sort = 'degree_desc', onProgress } = options;
   const q = normalizeArabic(query);
   const tokens = q.split(' ').filter((t) => t.length >= 2);
-  if (tokens.length === 0) return { hits: [], truncated: false, totalMatches: 0 };
+  if (tokens.length === 0) return { hits: [], totalMatches: 0 };
 
   const idx = await loadIndex();
-  // We shard by the first letter of the *first* token, since letter buckets
-  // group students by the first character of their first name.
+  // Shard by the first letter of the first token — letter buckets group
+  // students by the first character of their first name.
   const primary = tokens[0].charAt(0);
   const meta = idx.letters[primary];
-  if (!meta) return { hits: [], truncated: false, totalMatches: 0 };
+  if (!meta) return { hits: [], totalMatches: 0 };
 
   const matched: StudentRecord[] = [];
   for (let c = 0; c < meta.chunks; c++) {
@@ -181,12 +179,7 @@ export async function searchByName(
   }
 
   const sorted = applySort(matched, sort);
-  const truncated = sorted.length > limit;
-  return {
-    hits: truncated ? sorted.slice(0, limit) : sorted,
-    truncated,
-    totalMatches: matched.length,
-  };
+  return { hits: sorted, totalMatches: sorted.length };
 }
 
 async function loadTop(name: string): Promise<StudentRecord[]> {

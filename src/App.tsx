@@ -34,7 +34,6 @@ export default function App() {
   const progress = useResultsStore((s) => s.progress);
   const results = useResultsStore((s) => s.results);
   const totalMatches = useResultsStore((s) => s.totalMatches);
-  const truncated = useResultsStore((s) => s.truncated);
   const error = useResultsStore((s) => s.error);
   const activeStatuses = useResultsStore((s) => s.activeStatuses);
   const activeTiers = useResultsStore((s) => s.activeTiers);
@@ -69,7 +68,7 @@ export default function App() {
     const trimmed = query.trim();
     if (!trimmed) {
       setMode('idle');
-      setResults([], 0, false);
+      setResults([], 0);
       setProgress(null);
       setLoading(false);
       return;
@@ -80,7 +79,7 @@ export default function App() {
       // (e.g. "2", "20", "200"...). Only jump into the detail page once the
       // user has typed the full 7-digit seat and paused briefly.
       setMode('seating');
-      setResults([], 0, false);
+      setResults([], 0);
       setProgress(null);
       const isFullSeat = trimmed.length === 7;
       if (!isFullSeat) {
@@ -99,13 +98,13 @@ export default function App() {
 
     if (trimmed.length < 2) {
       setMode('idle');
-      setResults([], 0, false);
+      setResults([], 0);
       setLoading(false);
       return;
     }
 
     setMode('name');
-    setResults([], 0, false);
+    setResults([], 0);
     setLoading(true);
     const meta = index?.letters[trimmed.charAt(0)];
     setProgress({ loaded: 0, total: meta?.chunks ?? 1 });
@@ -117,7 +116,6 @@ export default function App() {
       searchByName(trimmed, {
         signal: controller.signal,
         onProgress: (loaded, total) => setProgress({ loaded, total }),
-        limit: 200,
         sort,
         filters: {
           statuses: activeStatuses,
@@ -128,7 +126,7 @@ export default function App() {
       })
         .then((r) => {
           if (controller.signal.aborted) return;
-          setResults(r.hits, r.totalMatches, r.truncated);
+          setResults(r.hits, r.totalMatches);
           if (r.hits.length === 0)
             setError(`لم يتم العثور على أي طالب يطابق "${trimmed}"`);
         })
@@ -206,7 +204,6 @@ export default function App() {
             <ResultsList
               results={results}
               totalMatches={totalMatches}
-              truncated={truncated}
               index={index}
               onOpen={handleOpen}
             />

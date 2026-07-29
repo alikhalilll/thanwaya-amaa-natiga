@@ -12,7 +12,6 @@ type State = {
   results: StudentRecord[];
   totalMatches: number;
   singleResult: StudentRecord | null;
-  truncated: boolean;
   error: string | null;
 
   activeStatuses: Set<number>;
@@ -25,7 +24,7 @@ type State = {
   setMode: (m: Mode) => void;
   setLoading: (v: boolean) => void;
   setProgress: (p: { loaded: number; total: number } | null) => void;
-  setResults: (r: StudentRecord[], total: number, truncated: boolean) => void;
+  setResults: (r: StudentRecord[], total: number) => void;
   setSingleResult: (r: StudentRecord | null) => void;
   setError: (e: string | null) => void;
 
@@ -46,7 +45,6 @@ export const useResultsStore = create<State>((set) => ({
   results: [],
   totalMatches: 0,
   singleResult: null,
-  truncated: false,
   error: null,
 
   activeStatuses: new Set<number>(),
@@ -59,8 +57,7 @@ export const useResultsStore = create<State>((set) => ({
   setMode: (m) => set({ mode: m }),
   setLoading: (v) => set({ loading: v }),
   setProgress: (p) => set({ progress: p }),
-  setResults: (r, total, truncated) =>
-    set({ results: r, totalMatches: total, truncated }),
+  setResults: (r, total) => set({ results: r, totalMatches: total }),
   setSingleResult: (r) => set({ singleResult: r }),
   setError: (e) => set({ error: e }),
 
