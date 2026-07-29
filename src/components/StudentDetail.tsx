@@ -10,6 +10,7 @@ import {
 } from '../lib/format';
 import CountUp from './CountUp';
 import { getBySeating, getSimilarInTier } from '../lib/dataClient';
+import ExternalPortals from './ExternalPortals';
 
 export default function StudentDetail({
   seat,
@@ -216,6 +217,8 @@ function StudentBody({
           </button>
         </div>
       </div>
+
+      <ExternalPortals seat={record.seat} />
 
       {similar.length > 0 && (
         <div className="glass rounded-2xl p-3 sm:p-4">
