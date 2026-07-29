@@ -14,9 +14,19 @@ export default function Stats({ index }: { index: DataIndex | null }) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3, duration: 0.5 }}
-      className="mx-auto max-w-3xl px-4 py-4"
+      className="mx-auto max-w-3xl px-4 py-3"
     >
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      {/* Compact horizontal pills on mobile, full grid on md+ */}
+      <div className="flex md:hidden gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x">
+        <StatPill label="الإجمالي" value={toArabicDigits(total.toLocaleString('en-US'))} />
+        <StatPill label="نجاح دور أول" value={`${toArabicDigits(rate)}٪`} />
+        <StatPill label="ممتاز" value={toArabicDigits(excellent.toLocaleString('en-US'))} />
+        <StatPill
+          label={statusStyle(1).label}
+          value={toArabicDigits((index.statusCounts[1] ?? 0).toLocaleString('en-US'))}
+        />
+      </div>
+      <div className="hidden md:grid grid-cols-4 gap-3">
         <StatCard
           label="إجمالي الطلاب"
           value={toArabicDigits(total.toLocaleString('en-US'))}
@@ -58,6 +68,15 @@ function StatCard({
       />
       <div className="text-[11px] sm:text-xs text-white/60 leading-snug">{label}</div>
       <div className="mt-1 text-lg sm:text-2xl font-black text-white">{value}</div>
+    </div>
+  );
+}
+
+function StatPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="glass shrink-0 snap-start rounded-full px-3 py-1.5 flex items-center gap-1.5">
+      <span className="text-[10px] text-white/60">{label}</span>
+      <span className="text-xs font-bold text-white">{value}</span>
     </div>
   );
 }

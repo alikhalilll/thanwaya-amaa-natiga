@@ -6,7 +6,7 @@ export default function Hero({ index }: { index: DataIndex | null }) {
   const total = index ? toArabicDigits(index.totalRows.toLocaleString('en-US')) : '...';
 
   return (
-    <header className="relative overflow-hidden pt-10 sm:pt-16 pb-6 sm:pb-10 text-center">
+    <header className="relative overflow-hidden pt-6 sm:pt-16 pb-4 sm:pb-10 text-center">
       <motion.div
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-10"
@@ -24,17 +24,16 @@ export default function Hero({ index }: { index: DataIndex | null }) {
         transition={{ duration: 0.6, ease: 'easeOut' }}
         className="mx-auto max-w-3xl px-4"
       >
-        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs text-brand-100">
-          <span className="inline-block h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 sm:px-4 py-1 sm:py-1.5 text-[11px] sm:text-xs text-brand-100">
+          <span className="inline-block h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-400 animate-pulse" />
           نتيجة الدور الأول - ٢٠٢٦
         </span>
-        <h1 className="mt-4 text-3xl sm:text-4xl md:text-6xl font-black leading-tight shine-text animate-shine">
+        <h1 className="mt-2 sm:mt-4 text-2xl sm:text-4xl md:text-6xl font-black leading-tight shine-text animate-shine">
           نتيجة الثانوية العامة
         </h1>
-        <p className="mt-3 sm:mt-4 text-sm sm:text-base md:text-lg text-brand-100/80">
-          ابحث برقم الجلوس أو الاسم من بين{' '}
-          <span className="font-bold text-white">{total}</span> نتيجة، مع فلترة سريعة حسب
-          الحالة والدرجة.
+        <p className="mt-1 sm:mt-4 text-[11px] sm:text-base md:text-lg text-brand-100/70 sm:text-brand-100/80">
+          ابحث بين{' '}
+          <span className="font-bold text-white">{total}</span> نتيجة
         </p>
       </motion.div>
     </header>

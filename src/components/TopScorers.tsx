@@ -25,27 +25,25 @@ export default function TopScorers({
   }, []);
 
   const degreeMax = index?.degreeMax ?? 320;
-  const shown = expanded ? rows : rows.slice(0, 10);
+  const shown = expanded ? rows : rows.slice(0, 3);
 
   return (
     <motion.section
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.4, duration: 0.5 }}
-      className="mx-auto max-w-3xl px-4 py-4"
+      className="mx-auto max-w-3xl px-4 py-3"
     >
-      <div className="glass rounded-2xl p-4">
-        <div className="flex items-center justify-between">
+      <div className="glass rounded-2xl p-3 sm:p-4">
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="flex w-full items-center justify-between text-start"
+        >
           <h3 className="text-sm text-white/70">🏆 أعلى ١٠٠ طالب</h3>
-          {rows.length > 10 && (
-            <button
-              onClick={() => setExpanded((v) => !v)}
-              className="rounded-lg bg-white/5 px-3 py-1 text-xs text-white/70 hover:bg-white/10 transition"
-            >
-              {expanded ? 'إخفاء' : 'عرض الكل'}
-            </button>
-          )}
-        </div>
+          <span className="text-[11px] text-white/50">
+            {expanded ? 'إخفاء' : 'عرض الكل'}
+          </span>
+        </button>
         <div className="mt-3 grid gap-2">
           {shown.map((r, i) => (
             <ResultCard

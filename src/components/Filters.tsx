@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useResultsStore } from '../store/useResultsStore';
 import type { DataIndex } from '../lib/types';
 import { statusStyle, tierStyle, toArabicDigits } from '../lib/format';
+import CollapsiblePanel from './CollapsiblePanel';
 
 export default function Filters({ index }: { index: DataIndex | null }) {
   const activeStatuses = useResultsStore((s) => s.activeStatuses);
@@ -24,15 +25,27 @@ export default function Filters({ index }: { index: DataIndex | null }) {
     maxDegree < degreeMax ||
     sort !== 'degree_desc';
 
+  const activeCount =
+    activeStatuses.size +
+    activeTiers.size +
+    (minDegree > 0 ? 1 : 0) +
+    (maxDegree < degreeMax ? 1 : 0) +
+    (sort !== 'degree_desc' ? 1 : 0);
+
+  const hint = activeCount > 0
+    ? `${toArabicDigits(activeCount)} فلاتر مفعّلة`
+    : 'اضغط للتخصيص';
+
   return (
     <motion.section
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2, duration: 0.4 }}
-      className="mx-auto max-w-3xl px-4 py-4"
+      className="mx-auto max-w-3xl px-4 py-2 sm:py-4"
     >
-      <div className="glass rounded-2xl p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <CollapsiblePanel title="الفلترة والفرز" hint={hint}>
+      <div className="glass rounded-2xl p-4 mt-2 md:mt-0">
+        <div className="hidden md:flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-sm text-white/70">الفلترة والفرز</h3>
           {anyFilterActive && (
             <button
@@ -43,6 +56,16 @@ export default function Filters({ index }: { index: DataIndex | null }) {
             </button>
           )}
         </div>
+        {anyFilterActive && (
+          <div className="md:hidden mb-2">
+            <button
+              onClick={resetFilters}
+              className="rounded-lg bg-white/5 px-3 py-1 text-xs text-white/70 hover:bg-white/10 transition"
+            >
+              إعادة تعيين
+            </button>
+          </div>
+        )}
 
         <div className="mt-3">
           <div className="text-[11px] text-white/50 mb-1">حالة الطالب</div>
@@ -139,6 +162,7 @@ export default function Filters({ index }: { index: DataIndex | null }) {
           </div>
         </div>
       </div>
+      </CollapsiblePanel>
     </motion.section>
   );
 }
